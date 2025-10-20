@@ -1,0 +1,53 @@
+**************************New Column**************************
+= Table.AddColumn(#"Replaced Value", "Tenure_year", 
+each if [tenure] < 12 then "< 1 Year" 
+else if [tenure] < 24 then "1–2 Years" 
+else if [tenure] < 36 then "2–3 Years" 
+else if [tenure] < 48 then "3–4 Years" 
+else if [tenure] < 60 then "4–5 Years" 
+else "5+ years")
+--------------------------------------------------------------
+TotalServices = 
+IF('Churn-Dataset'[OnlineSecurity] = "Yes", 1, 0) +
+IF('Churn-Dataset'[OnlineBackup] = "Yes", 1, 0) +
+IF('Churn-Dataset'[DeviceProtection] = "Yes", 1, 0) +
+IF('Churn-Dataset'[TechSupport] = "Yes", 1, 0) +
+IF('Churn-Dataset'[StreamingTV] = "Yes", 1, 0) +
+IF('Churn-Dataset'[StreamingMovies] = "Yes", 1, 0)
+
+--------------------------------------------------------------
+SeniorCitizenLabel = IF('Churn-Dataset'[SeniorCitizen] = 1 , "Yes" ,"No")
+
+
+**************************Measures **************************
+Churn% = DIVIDE(ServiceStatusSummary[Churn_Count],ServiceStatusSummary[Count_of_customers],0) 
+--------------------------------------------------------------
+customer_title = VAR Churn_selected = SELECTEDVALUE('Churn-Dataset'[Churn])
+RETURN
+SWITCH(TRUE(), Churn_selected = "Yes" ,"Churned Customers",
+Churn_selected = "No", "Active Customers",
+"Total Customers")
+--------------------------------------------------------------
+Revenue_header = VAR selected_value = SELECTEDVALUE('Churn-Dataset'[Churn]) 
+RETURN
+SWITCH(TRUE(), selected_value = "Yes", "Revenue Lost from Churn",
+selected_value = "No", "Revenue from Active Customer",
+"Total Revenue"
+)
+
+**************************Table **************************
+ServiceStatusSummary = 
+UNION(
+    SELECTCOLUMNS('Churn-Dataset',"customerID",'Churn-Dataset'[customerID],"Service","Device Protection","Status",'Churn-Dataset'[DeviceProtection],"Churn",'Churn-Dataset'[Churn]),
+    SELECTCOLUMNS('Churn-Dataset',"customerID",'Churn-Dataset'[customerID],"Service","Streaming TV","Status",'Churn-Dataset'[StreamingTV],"Churn",'Churn-Dataset'[Churn]),
+    SELECTCOLUMNS('Churn-Dataset',"customerID",'Churn-Dataset'[customerID],"Service","Streaming Movies","Status",'Churn-Dataset'[StreamingMovies],"Churn",'Churn-Dataset'[Churn]),
+    SELECTCOLUMNS('Churn-Dataset',"customerID",'Churn-Dataset'[customerID],"Service","Online Backup","Status",'Churn-Dataset'[OnlineBackup],"Churn",'Churn-Dataset'[Churn]),
+    SELECTCOLUMNS('Churn-Dataset',"customerID",'Churn-Dataset'[customerID],"Service","Online Security","Status",'Churn-Dataset'[OnlineSecurity],"Churn",'Churn-Dataset'[Churn]))
+
+**************************Measures **************************
+Churn_Count = CALCULATE(
+    DISTINCTCOUNT( ServiceStatusSummary[CustomerID] ),
+    ServiceStatusSummary[Churn] = "Yes"
+)
+--------------------------------------------------------------
+Count_of_customers = COALESCE(DISTINCTCOUNT( ServiceStatusSummary[CustomerID] ),0)
